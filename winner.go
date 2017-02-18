@@ -166,8 +166,8 @@ func winner(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad Request", http.StatusBadRequest)
 		return
 	}
-	if nbWinner < int(0) {
-		http.Error(w, "request < 0 ", http.StatusBadRequest)
+	if nbWinner <= int(0) {
+		http.Error(w, "request <= 0 ", http.StatusBadRequest)
 		return
 	}
 	if nbWinner >= len(result) || nbWinner > len(winnerPreFetch)-1 {
@@ -180,9 +180,14 @@ func winner(w http.ResponseWriter, r *http.Request) {
 }
 
 func evictCache() {
-	result, _ = getAttentees()
-	for i := 1; i < 10; i++ {
-		winnerPreFetch[i], _ = preFetchWinner(i)
+	var err error
+	result, err = getAttentees()
+	if err != nil {
+		fmt.Printf("error while getting attentees %s", err)
+	} else {
+		for i := 1; i < 10; i++ {
+			winnerPreFetch[i], _ = preFetchWinner(i)
+		}
 	}
 }
 
