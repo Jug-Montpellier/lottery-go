@@ -176,7 +176,7 @@ func winner(chanAttendees chan []attendee) func(http.ResponseWriter, *http.Reque
 
 func getLastEvent() (*string, *time.Time, error) {
 	token := os.Getenv("EVENTBRITE_TOKEN")
-	orgaID := "1464915124"
+	orgaID := os.Getenv("ORGANIZER_TOKEN")
 
 	resp, err := http.Get("https://www.eventbriteapi.com/v3/events/search/?token=" + token + "&organizer.id=" + orgaID)
 	if err != nil {
