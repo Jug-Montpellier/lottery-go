@@ -5,12 +5,12 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
-	"log"
 )
 
 const (
@@ -56,8 +56,8 @@ func cors(next http.Handler) http.Handler {
 }
 
 type event struct {
-	ID string `json:"id"`
-	Date start `json:"start"`
+	ID   string `json:"id"`
+	Date start  `json:"start"`
 }
 
 type start struct {
@@ -134,7 +134,7 @@ func winner(chanAttendees chan []attendee) func(http.ResponseWriter, *http.Reque
 
 	go func() {
 		for {
-			attendees = <- chanAttendees
+			attendees = <-chanAttendees
 			for i := 1; i < 10; i++ {
 				winnerPreFetch[i], _ = preFetchWinner(i, attendees)
 			}
@@ -158,7 +158,7 @@ func winner(chanAttendees chan []attendee) func(http.ResponseWriter, *http.Reque
 			http.Error(w, "request < 0 ", http.StatusBadRequest)
 			return
 		}
-		if nbWinner >= len(attendees) || nbWinner > len(winnerPreFetch) - 1 {
+		if nbWinner >= len(attendees) || nbWinner > len(winnerPreFetch)-1 {
 			n := nbWinner
 			if nbWinner >= len(attendees) {
 				n = len(attendees)
@@ -175,40 +175,40 @@ func winner(chanAttendees chan []attendee) func(http.ResponseWriter, *http.Reque
 }
 
 func getLastEvent() (*string, *time.Time, error) {
-	token := os.Getenv("TOKEN")
+	token := os.Getenv("EVENTBRITE_TOKEN")
 	orgaID := "1464915124"
 
 	resp, err := http.Get("https://www.eventbriteapi.com/v3/events/search/?token=" + token + "&organizer.id=" + orgaID)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	var request lastRequest
 	if err := json.Unmarshal(body, &request); err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	if len(request.Events) == 0 {
-		return nil,nil, errors.New("No event found")
+		return nil, nil, errors.New("No event found")
 	}
 
-	date, err := time.Parse(time.RFC3339,request.Events[0].Date.Utc)
+	date, err := time.Parse(time.RFC3339, request.Events[0].Date.Utc)
 	log.Println(date)
 	return &request.Events[0].ID, &date, nil
 }
 
-func getAttendees(lastEventID string) ([]attendee, error){
-	token := os.Getenv("TOKEN")
+func getAttendees(lastEventID string) ([]attendee, error) {
+	token := os.Getenv("EVENTBRITE_TOKEN")
 	var i = 1
 	var result = []attendee{}
 	for {
 		log.Println("Fetch attendees")
-		log.Println("i:"+strconv.Itoa(i))
+		log.Println("i:" + strconv.Itoa(i))
 		resp, err := http.Get("https://www.eventbriteapi.com/v3/events/" + lastEventID + "/attendees/?page=" + strconv.Itoa(i) + "&token=" + token)
 		if err != nil {
 			return nil, err
@@ -238,17 +238,17 @@ func getAttendees(lastEventID string) ([]attendee, error){
 func main() {
 	mux := http.NewServeMux()
 
-	lastEventId,lastEventDate, err := getLastEvent()
+	lastEventId, lastEventDate, err := getLastEvent()
 	if err != nil {
 		log.Println(err)
 	}
 
-	log.Println("Event id: " + *lastEventId + " / Event date : "+ lastEventDate.String())
+	log.Println("Event id: " + *lastEventId + " / Event date : " + lastEventDate.String())
 
 	newEventID := make(chan string)
 	chanNewAttendees := make(chan []attendee)
 
-	go func () {
+	go func() {
 		var eventID string
 		for {
 			var listAttendee []attendee
@@ -277,12 +277,12 @@ func main() {
 	newEventID <- *lastEventId
 
 	go func() {
-		for range time.Tick(24 * time.Hour){
-			newLastEventId,lastEventDate, err := getLastEvent()
+		for range time.Tick(24 * time.Hour) {
+			newLastEventId, lastEventDate, err := getLastEvent()
 			if err != nil {
 				log.Println(err)
 			}
-			log.Println(*lastEventId + " "+ lastEventDate.String())
+			log.Println(*lastEventId + " " + lastEventDate.String())
 			if *newLastEventId != *lastEventId {
 				newEventID <- *newLastEventId
 			}
